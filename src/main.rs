@@ -1,19 +1,20 @@
+use std::sync::Mutex;
 use std::thread;
+use std::time::Duration;
 fn main() {
-    let numbers = Vec::from_iter(0..=1000);
-    let t = thread::spawn(move || {
-        let len = numbers.len();
-        let sum = numbers.into_iter().sum::<usize>();
-        sum / len
-    });
-    let name = thread::current();
-    let name = name.name().unwrap();
-    let average = t.join().unwrap();
+    let n = Mutex::new(0);
+    thread::scope(|s| {
+        for _ in 0..10 {
+            s.spawn(|| {
+                let mut guard = n.lock().unwrap();
 
-    println!("average: {}, name: {:?}", average, name)
+                for _ in 0..100 {
+                    *guard += 1;
+                }
+                drop(guard);
+                thread::sleep(Duration::from_secs(1)); // New!
+            });
+        }
+    });
+    assert_eq!(n.into_inner().unwrap(), 1000);
 }
-// fn f() {
-//     println!("Hello from another thread!");
-//     let id = thread::current().id();
-//     println!("This is my thread id: {id:?}");
-// }
