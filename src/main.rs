@@ -1,20 +1,22 @@
+use std::collections::VecDeque;
 use std::sync::Mutex;
 use std::thread;
 use std::time::Duration;
 fn main() {
-    let n = Mutex::new(0);
+    let queue = Mutex::new(VecDeque::new());
     thread::scope(|s| {
-        for _ in 0..10 {
-            s.spawn(|| {
-                let mut guard = n.lock().unwrap();
-
-                for _ in 0..100 {
-                    *guard += 1;
-                }
-                drop(guard);
-                thread::sleep(Duration::from_secs(1)); // New!
-            });
+        let t = s.spawn(|| loop {
+            let item = queue.lock().unwrap().pop_front();
+            if let Some(item) = item {
+                dbg!(item);
+            } else {
+                thread::park();
+            }
+        });
+        for i in 0..10 {
+            queue.lock().unwrap().push_back(i);
+            t.thread().unpark();
+            thread::sleep(Duration::from_secs(1));
         }
-    });
-    assert_eq!(n.into_inner().unwrap(), 1000);
+    })
 }
